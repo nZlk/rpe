@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RPE</title>
+<style>
+:root{
+  --bg-a:#002e1c; --bg-b:#00523d;
+  --card:rgba(255,255,255,.04);
+  --line:rgba(255,255,255,.35);
+  --line-soft:rgba(255,255,255,.14);
+  --text:rgba(255,255,255,.78);
+  --strong:#fff;
+  --accent:#b7f700;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  font-weight:400;color:var(--text);line-height:1.5;
+  background:linear-gradient(160deg,var(--bg-a),var(--bg-b));
+  min-height:100vh;padding:1.1rem .9rem 2.5rem;
+}
+.wrap{max-width:24rem;margin:0 auto}
+.session{
+  font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--accent);text-align:center;margin-bottom:1.2rem;
+}
+label{
+  display:block;font-size:.85rem;color:var(--strong);
+  margin:0 0 .4rem .1rem;font-weight:600;
+}
+input{
+  width:100%;font-family:inherit;font-size:1.6rem;font-weight:600;text-align:center;
+  color:var(--strong);background:var(--card);
+  border:1px solid var(--line-soft);border-radius:8px;
+  padding:.7rem 1rem;margin-bottom:1.2rem;
+}
+input:focus{outline:2px solid var(--accent);outline-offset:1px}
+input.error{border-color:#e0908a}
+.rpe-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem;margin-bottom:1.2rem;
+}
+.rpe{
+  font-family:inherit;cursor:pointer;text-align:left;
+  color:var(--text);background:var(--card);
+  border:1px solid var(--line-soft);border-radius:8px;
+  padding:.7rem .8rem;min-height:3.3rem;
+  display:flex;align-items:center;gap:.6rem;
+  transition:background .1s,border-color .1s;
+}
+.rpe .num{font-size:1.25rem;font-weight:700;color:var(--strong);min-width:1.6rem}
+.rpe .lbl{font-size:.78rem;letter-spacing:.02em}
+.rpe:active{background:rgba(255,255,255,.1)}
+.rpe.selected{border-color:var(--accent);background:rgba(183,247,0,.12)}
+.rpe.selected .num{color:var(--accent)}
+.submit{
+  display:block;width:100%;cursor:pointer;font-family:inherit;
+  font-size:1rem;font-weight:700;letter-spacing:.2em;
+  color:#002e1c;background:var(--accent);
+  border:none;border-radius:8px;padding:1rem;
+}
+.submit:disabled{opacity:.4;cursor:default}
+.toast{
+  position:fixed;left:50%;bottom:2.2rem;transform:translateX(-50%) translateY(1rem);
+  background:rgba(0,46,28,.95);color:var(--strong);
+  border:1px solid var(--accent);border-radius:8px;
+  padding:.8rem 1.6rem;font-size:.95rem;font-weight:600;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion: reduce){ .toast{transition:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="session" id="sessionName"></p>
+
+  <label for="jersey">Jersey Number</label>
+  <input id="jersey" inputmode="numeric" pattern="[0-9]*" maxlength="2"
+    placeholder="1–99" autocomplete="off">
+
+  <label>RPE</label>
+  <div class="rpe-grid" id="rpeGrid"></div>
+
+  <button class="submit" id="submit">Submit</button>
+
+</div>
+
+<div class="toast" id="toast">Saved — thanks!</div>
+
+<script>
+/* ─────────────────────────────────────────────
+   설정
+   endpoint: 저장용 Worker 주소. 비워두면 저장 없이 동작(로컬 확인용).
+   session: 비워두면 URL에서 자동 인식 (?s=세션명 → 없으면 경로 마지막 → 없으면 TEST)
+   ───────────────────────────────────────────── */
+var CONFIG = { endpoint: "", session: "" };
+
+/* Borg CR-10 라벨 */
+var RPE = [
+  [1, "Very easy"], [2, ""], [3, ""], [4, ""], [5, ""],
+  [6, ""], [7, ""], [8, ""], [9, ""], [10, "Maximal"]
+];
+
+var $ = function(id){ return document.getElementById(id); };
+var selected = null;
+
+/* 세션명 결정: 배포 시 경로(club.com/mon-am → mon-am), 로컬 확인 시 ?s= */
+var session = CONFIG.session;
+if(!session && location.protocol !== "file:"){
+  var seg = location.pathname.split("/").filter(Boolean).pop();
+  if(seg && seg !== "index.html" && seg !== "404.html" && /^[A-Za-z0-9_-]{1,32}$/.test(seg)) session = seg;
+}
+if(!session){
+  var q = new URLSearchParams(location.search).get("s");
+  if(q && /^[A-Za-z0-9_-]{1,32}$/.test(q)) session = q;
+}
+session = session || "TEST";
+$("sessionName").textContent = "Session · " + session;
+
+/* RPE 버튼 생성 */
+RPE.forEach(function(item){
+  var b = document.createElement("button");
+  b.type = "button";
+  b.className = "rpe";
+  b.innerHTML = '<span class="num">' + item[0] + '</span>' +
+                (item[1] ? '<span class="lbl">' + item[1] + '</span>' : '');
+  b.addEventListener("click", function(){
+    document.querySelectorAll(".rpe.selected").forEach(function(el){ el.classList.remove("selected"); });
+    b.classList.add("selected");
+    selected = item[0];
+  });
+  $("rpeGrid").appendChild(b);
+});
+
+/* 토스트 */
+var toastTimer = null;
+function toast(msg){
+  var t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 1500);
+}
+
+/* 제출 */
+$("submit").addEventListener("click", function(){
+  var no = $("jersey").value.trim();
+  var valid = /^[0-9]{1,2}$/.test(no) && +no >= 1 && +no <= 99;
+  $("jersey").classList.toggle("error", !valid);
+  if(!valid){ $("jersey").focus(); return; }
+  if(selected === null){ toast("Select your RPE"); return; }
+
+  function resetForm(){
+    $("jersey").value = "";
+    $("jersey").classList.remove("error");
+    document.querySelectorAll(".rpe.selected").forEach(function(el){ el.classList.remove("selected"); });
+    selected = null;
+  }
+
+  if(!CONFIG.endpoint){           /* 로컬 확인 모드: 저장 없이 동작 */
+    toast("Saved — thanks!");
+    resetForm();
+    return;
+  }
+
+  var btn = $("submit");
+  btn.disabled = true;
+  fetch(CONFIG.endpoint, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ session: session, jersey: +no, rpe: selected })
+  }).then(function(res){
+    if(res.ok){ toast("Saved — thanks!"); resetForm(); }
+    else if(res.status === 403){ toast("Session not open"); }
+    else{ toast("Error — try again"); }
+  }).catch(function(){
+    toast("Network error — try again");
+  }).finally(function(){ btn.disabled = false; });
+});
+</script>
+</body>
+</html>
