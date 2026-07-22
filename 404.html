@@ -101,7 +101,7 @@ label{display:block;font-size:.82rem;font-weight:650;color:var(--white);margin:0
 
 <script>
 var state={jersey:null,rpe:null,regions:[]},currentLang="en",$=function(id){return document.getElementById(id)},toastTimer;
-var CONFIG={endpoint:"",session:""};   /* 배포 시 endpoint에 Worker /submit 주소 입력 */
+var CONFIG={endpoint:"https://rpe-collect.1994te.workers.dev/submit",session:""};
 var session=CONFIG.session;
 if(!session&&location.protocol!=="file:"){var seg=location.pathname.split("/").filter(Boolean).pop();if(seg&&seg!=="index.html"&&seg!=="404.html"&&/^[A-Za-z0-9_-]{1,32}$/.test(seg))session=seg}
 if(!session){var qs=new URLSearchParams(location.search).get("s");if(qs&&/^[A-Za-z0-9_-]{1,32}$/.test(qs))session=qs}
