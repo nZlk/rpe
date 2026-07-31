@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RPE</title>
+<style>
+:root{
+  /* 팔레트 3색 */
+  --deep:#002e1c;      /* R0  G46  B28  */
+  --mid:#00523d;       /* R0  G82  B61  */
+  --accent:#b7f700;    /* R183 G247 B0  */
+
+  --card:rgba(183,247,0,.05);
+  --card-hi:rgba(183,247,0,.10);
+  --line-soft:rgba(183,247,0,.14);
+  --line:rgba(183,247,0,.30);
+  --glow:rgba(183,247,0,.22);
+
+  --text:rgba(255,255,255,.72);
+  --muted:rgba(255,255,255,.5);
+  --strong:#fff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  font-weight:400;color:var(--text);line-height:1.5;
+  background:
+    radial-gradient(110% 70% at 50% -5%, var(--mid) 0%, rgba(0,82,61,0) 62%),
+    radial-gradient(80% 45% at 50% 105%, rgba(183,247,0,.10) 0%, rgba(183,247,0,0) 70%),
+    linear-gradient(168deg, var(--deep) 0%, var(--mid) 52%, var(--deep) 100%);
+  background-attachment:fixed;
+  min-height:100vh;padding:1.1rem .9rem 2.5rem;
+}
+.wrap{max-width:24rem;margin:0 auto;position:relative}
+
+/* 언어 토글 */
+.lang{
+  position:absolute;top:0;right:0;
+  display:flex;align-items:center;height:1.7rem;
+  background:var(--card);border:1px solid var(--line-soft);
+  border-radius:999px;padding:0 2px;
+}
+.lang button{
+  font-family:inherit;cursor:pointer;
+  font-size:.68rem;font-weight:700;letter-spacing:.08em;
+  height:1.3rem;line-height:1.3rem;
+  color:var(--muted);background:none;border:none;border-radius:999px;
+  padding:0 .55rem;transition:color .12s,background .12s;
+}
+.lang button:hover{color:var(--strong)}
+.lang button.on{color:var(--deep);background:var(--accent)}
+.lang button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.session{
+  font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--accent);text-align:center;
+  height:1.7rem;line-height:1.7rem;margin-bottom:1.35rem;
+  text-shadow:0 0 18px var(--glow);
+}
+label{
+  display:block;font-size:.85rem;color:var(--strong);
+  margin:0 0 .4rem .1rem;font-weight:600;
+}
+.prompt{
+  font-size:.82rem;color:var(--muted);
+  margin:0 0 .25rem .1rem;
+}
+input{
+  width:100%;font-family:inherit;font-size:1.6rem;font-weight:600;text-align:center;
+  color:var(--strong);background:rgba(0,46,28,.45);
+  border:1px solid var(--line-soft);border-radius:8px;
+  padding:.7rem 1rem;margin-bottom:1.4rem;
+  transition:border-color .12s, box-shadow .12s, background .12s;
+}
+input::placeholder{color:rgba(255,255,255,.3)}
+input:focus{
+  outline:none;
+  border-color:var(--accent);
+  background:rgba(0,46,28,.6);
+  box-shadow:0 0 0 3px var(--glow);
+}
+input.error{
+  border-color:var(--strong);
+  box-shadow:0 0 0 3px rgba(255,255,255,.18);
+}
+.rpe-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem;margin-bottom:1.2rem;
+}
+.rpe{
+  font-family:inherit;cursor:pointer;text-align:left;
+  color:var(--text);background:var(--card);
+  border:1px solid var(--line-soft);border-radius:8px;
+  padding:.7rem .8rem;min-height:3.3rem;
+  display:flex;align-items:center;gap:.55rem;
+  transition:background .12s,border-color .12s,box-shadow .12s;
+}
+.rpe .num{font-size:1.25rem;font-weight:700;color:rgba(255,255,255,.92);min-width:1.6rem;transition:color .12s}
+.rpe .lbl{font-size:.76rem;letter-spacing:.01em;line-height:1.25}
+.rpe .lbl:empty{display:none}
+.rpe:hover{background:var(--card-hi);border-color:var(--line)}
+.rpe:active{background:rgba(183,247,0,.16)}
+.rpe:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rpe.selected{
+  position:relative;overflow:hidden;
+  border-color:var(--line-soft);
+  background:rgba(183,247,0,.07);
+}
+.rpe.selected::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--accent);
+}
+.rpe.selected:hover{background:rgba(183,247,0,.07)}
+.rpe.selected .num{color:var(--accent)}
+.submit{
+  display:block;width:100%;cursor:pointer;font-family:inherit;
+  font-size:1rem;font-weight:700;letter-spacing:.2em;
+  color:var(--deep);background:var(--accent);
+  border:none;border-radius:8px;padding:1rem;
+  box-shadow:0 6px 28px rgba(183,247,0,.28);
+  transition:box-shadow .12s, opacity .12s;
+}
+.submit:hover{box-shadow:0 6px 34px rgba(183,247,0,.42)}
+.submit:focus-visible{outline:2px solid var(--strong);outline-offset:2px}
+.submit:disabled{opacity:.35;box-shadow:none;cursor:default}
+.toast{
+  position:fixed;left:50%;bottom:2.2rem;transform:translateX(-50%) translateY(1rem);
+  background:rgba(0,46,28,.95);color:var(--strong);
+  border:1px solid var(--accent);border-radius:8px;
+  padding:.8rem 1.6rem;font-size:.95rem;font-weight:600;
+  box-shadow:0 8px 30px rgba(0,46,28,.55), 0 0 22px var(--glow);
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion: reduce){ .toast{transition:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="lang" id="lang">
+    <button type="button" data-lang="en">EN</button>
+    <button type="button" data-lang="ko">KO</button>
+  </div>
+
+  <p class="session" id="sessionName" lang="en"></p>
+
+  <label for="jersey" id="jerseyLabel">Jersey Number</label>
+  <input id="jersey" inputmode="numeric" pattern="[0-9]*" maxlength="2"
+    placeholder="1–99" autocomplete="off">
+
+  <p class="prompt" id="prompt">How hard was the session?</p>
+  <label id="rpeLabel">RPE</label>
+  <div class="rpe-grid" id="rpeGrid"></div>
+
+  <button class="submit" id="submit">Submit</button>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ─────────────────────────────────────────────
+   설정
+   endpoint: 저장용 Worker 주소. 비워두면 저장 없이 동작(로컬 확인용).
+   session: 비워두면 URL에서 자동 인식 (?s=세션명 → 없으면 경로 마지막 → 없으면 TEST)
+   defaultLang: "en" | "ko" | "auto" (auto = 브라우저 언어 따라감)
+   ───────────────────────────────────────────── */
+var CONFIG = { endpoint: "", session: "", defaultLang: "en" };
+
+/* 앵커는 1·5·10만 표시 (나머지는 비워 사이 값을 자유롭게 고르도록) */
+var RPE = [
+  [1,  "Very, very easy", "매우 매우 쉬움"],
+  [2,  "",                ""],
+  [3,  "",                ""],
+  [4,  "",                ""],
+  [5,  "Moderate",        "보통"],
+  [6,  "",                ""],
+  [7,  "",                ""],
+  [8,  "",                ""],
+  [9,  "",                ""],
+  [10, "Maximal",         "최대"]
+];
+
+var I18N = {
+  en: {
+    session: "Session",
+    jersey:  "Jersey Number",
+    prompt:  "How hard was the session?",
+    rpe:     "RPE",
+    submit:  "Submit",
+    saved:   "Saved — thanks!",
+    pickRpe: "Select your RPE",
+    closed:  "Session not open",
+    error:   "Error — try again",
+    network: "Network error — try again"
+  },
+  ko: {
+    session: "Session",
+    jersey:  "등번호",
+    prompt:  "이번 훈련, 얼마나 힘들었나요?",
+    rpe:     "RPE (운동자각도)",
+    submit:  "제출",
+    saved:   "Saved — thanks!",
+    pickRpe: "Select your RPE",
+    closed:  "Session not open",
+    error:   "Error — try again",
+    network: "Network error — try again"
+  }
+};
+
+var $ = function(id){ return document.getElementById(id); };
+var selected = null;
+
+/* 세션명 결정: 배포 시 경로(club.com/mon-am → mon-am), 로컬 확인 시 ?s= */
+var session = CONFIG.session;
+if(!session && location.protocol !== "file:"){
+  var seg = location.pathname.split("/").filter(Boolean).pop();
+  if(seg && seg !== "index.html" && seg !== "404.html" && /^[A-Za-z0-9_-]{1,32}$/.test(seg)) session = seg;
+}
+if(!session){
+  var q = new URLSearchParams(location.search).get("s");
+  if(q && /^[A-Za-z0-9_-]{1,32}$/.test(q)) session = q;
+}
+session = session || "TEST";
+
+/* 언어 결정: ?lang= → CONFIG → 브라우저 언어 */
+var lang = new URLSearchParams(location.search).get("lang");
+if(lang !== "en" && lang !== "ko") lang = CONFIG.defaultLang;
+if(lang === "auto") lang = /^ko/i.test(navigator.language || "") ? "ko" : "en";
+if(lang !== "ko") lang = "en";
+
+/* RPE 버튼 생성 (라벨은 언어 전환 시 텍스트만 교체 — 선택 상태 유지) */
+RPE.forEach(function(item){
+  var b = document.createElement("button");
+  b.type = "button";
+  b.className = "rpe";
+
+  var num = document.createElement("span");
+  num.className = "num";
+  num.textContent = item[0];
+
+  var lbl = document.createElement("span");
+  lbl.className = "lbl";
+  lbl.setAttribute("data-en", item[1]);
+  lbl.setAttribute("data-ko", item[2]);
+
+  b.appendChild(num);
+  b.appendChild(lbl);
+
+  b.addEventListener("click", function(){
+    document.querySelectorAll(".rpe.selected").forEach(function(el){ el.classList.remove("selected"); });
+    b.classList.add("selected");
+    selected = item[0];
+  });
+  $("rpeGrid").appendChild(b);
+});
+
+/* 언어 적용 */
+function applyLang(){
+  var t = I18N[lang];
+  document.documentElement.lang = lang;
+  $("sessionName").textContent = t.session + " · " + session;
+  $("jerseyLabel").textContent = t.jersey;
+  $("prompt").textContent      = t.prompt;
+  $("rpeLabel").textContent    = t.rpe;
+  $("submit").textContent      = t.submit;
+  document.querySelectorAll(".rpe .lbl").forEach(function(el){
+    el.textContent = el.getAttribute("data-" + lang);
+  });
+  document.querySelectorAll("#lang button").forEach(function(b){
+    b.classList.toggle("on", b.getAttribute("data-lang") === lang);
+  });
+}
+document.querySelectorAll("#lang button").forEach(function(b){
+  b.addEventListener("click", function(){
+    lang = b.getAttribute("data-lang");
+    applyLang();
+  });
+});
+applyLang();
+
+/* 토스트 */
+var toastTimer = null;
+function toast(msg){
+  var t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 1500);
+}
+
+/* 제출 */
+$("submit").addEventListener("click", function(){
+  var t = I18N[lang];
+  var no = $("jersey").value.trim();
+  var valid = /^[0-9]{1,2}$/.test(no) && +no >= 1 && +no <= 99;
+  $("jersey").classList.toggle("error", !valid);
+  if(!valid){ $("jersey").focus(); return; }
+  if(selected === null){ toast(t.pickRpe); return; }
+
+  function resetForm(){
+    $("jersey").value = "";
+    $("jersey").classList.remove("error");
+    document.querySelectorAll(".rpe.selected").forEach(function(el){ el.classList.remove("selected"); });
+    selected = null;
+  }
+
+  if(!CONFIG.endpoint){           /* 로컬 확인 모드: 저장 없이 동작 */
+    toast("Preview only — not saved");
+    resetForm();
+    return;
+  }
+
+  var btn = $("submit");
+  btn.disabled = true;
+  fetch(CONFIG.endpoint, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ session: session, jersey: +no, rpe: selected })
+  }).then(function(res){
+    if(res.ok){ toast(t.saved); resetForm(); }
+    else if(res.status === 403){ toast(t.closed); }
+    else{ toast(t.error); }
+  }).catch(function(){
+    toast(t.network);
+  }).finally(function(){ btn.disabled = false; });
+});
+</script>
+</body>
+</html>
